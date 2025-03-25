@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using Ecommerce.Data;
-using Ecommerce.Model;
+using Ecommerce.Model.Entities;
 using Ecommerce.Model.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

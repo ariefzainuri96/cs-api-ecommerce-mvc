@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Ecommerce.Model;
+namespace Ecommerce.Model.Entities;
 
 [Table("users")]
 public class User
@@ -14,5 +14,5 @@ public class User
     [Column("password")]
     public string Password { get; set; } = string.Empty;
     [Column("is_admin")]
-    public bool IsAdmin { get; set; }
+    public bool IsAdmin { get; set; } = false;
 }

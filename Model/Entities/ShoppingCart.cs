@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Ecommerce.Model;
+namespace Ecommerce.Model.Entities;
 
 [Table("shopping_carts")]
 public class ShoppingCart
