@@ -1,37 +1,46 @@
-﻿using System.Reflection;
-using Ecommerce.Data;
+﻿using Ecommerce.Model.Dto;
 using Ecommerce.Model.Entities;
 using Ecommerce.Model.Response;
+using Ecommerce.Services.ProductService;
+using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Ecommerce.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class ProductController(EcommerceDbContext context) : ControllerBase
+public class ProductController(IProductService productService, IValidator<AddProductDto> validator) : ControllerBase
 {
-
-    private readonly EcommerceDbContext _context = context;
-
+    [Authorize]
     [HttpGet]
     public async Task<ActionResult<BaseResponse<List<Product>>>> GetProducts()
     {
+        var (result, products) = await productService.GetProductsAsync();
+
+        if (result != null)
+        {
+            return result;
+        }
+
         return Ok(new BaseResponse<List<Product>>
         {
             Status = 200,
             Message = "Sukses",
-            Data = await _context.Products
-            .ToListAsync()
+            Data = products
         });
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<ActionResult<BaseResponse<Product>>> GetProductById(int id)
     {
-        Product? product = await _context.Products.FindAsync(id);
+        var (result, product) = await productService.GetProductByIdAsync(id);
 
-        if (product is null) return NotFound($"Product with specified ID: {id} Not Found!");
+        if (result != null)
+        {
+            return result;
+        }
 
         return Ok(new BaseResponse<Product>
         {
@@ -41,61 +50,50 @@ public class ProductController(EcommerceDbContext context) : ControllerBase
         });
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<BaseResponse<Product>>> PostProduct(Product request)
+    public async Task<ActionResult<BaseResponse<Product>>> PostProduct([FromBody] AddProductDto request)
     {
-        await _context.Products.AddAsync(request);
-        await _context.SaveChangesAsync();
+        var validationResult = await validator.ValidateAsync(request);
+
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors);
+        }
+
+        var (result, product) = await productService.PostProductAsync(request);
+
+        if (result != null)
+        {
+            return result;
+        }
 
         return Ok(new BaseResponse<Product>()
         {
             Status = 200,
             Message = $"Video game is Added!",
-            Data = request
+            Data = product
         });
     }
 
     //// Below is example when you want to automatically update the field based on the user request
     //// it is good when the model is big, but overkilled when the model is simple
     //// refer to [UpdateVideoGame] function to get simple example
+    [Authorize]
     [HttpPatch("{id}")]
-    public ActionResult<BaseResponse<Product>> PatchProduct(int id, [FromBody] Dictionary<string, object> updates)
+    public async Task<ActionResult<BaseResponse<Product>>> PatchProduct(int id, [FromBody] Dictionary<string, object> updates)
     {
         if (updates == null || updates.Count == 0)
         {
             return BadRequest("No fields to update.");
         }
 
-        // Find the video game by ID
-        var product = _context.Products.FirstOrDefault(vg => vg.Id == id);
+        var (result, product) = await productService.PatchProductAsync(id, updates);
 
-        if (product == null)
+        if (result != null)
         {
-            return NotFound($"VideoGame with ID {id} not found.");
+            return result;
         }
-
-        // Update fields dynamically
-        foreach (var update in updates)
-        {
-            var propertyName = update.Key;
-            var propertyValue = update.Value;
-
-            // Use reflection to check if the property exists and is writable
-            var propertyInfo = typeof(Product).GetProperty(propertyName,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-            if (propertyInfo != null && propertyInfo.CanWrite)
-            {
-                // Convert the value to the correct type and set it
-                propertyInfo.SetValue(product, Convert.ChangeType(propertyValue, propertyInfo.PropertyType));
-            }
-            else
-            {
-                return BadRequest($"Invalid property: {propertyName}");
-            }
-        }
-
-        _context.SaveChanges();
 
         return Ok(new BaseResponse<Product>()
         {
@@ -105,14 +103,16 @@ public class ProductController(EcommerceDbContext context) : ControllerBase
         });
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
-    public ActionResult DeleteProduct(int id)
+    public async Task<ActionResult> DeleteProduct(int id)
     {
-        var product = _context.Products.FirstOrDefault(p => p.Id == id);
+        var error = await productService.DeleteProductAsync(id);
 
-        if (product is null) return NotFound("Product that you want to delete is not found!");
-
-        _context.Products.Remove(product);
+        if (error != null)
+        {
+            return error;
+        }
 
         return Ok(new BaseResponse<string>() { Status = 200, Message = "Succesfully delete product!" });
     }
