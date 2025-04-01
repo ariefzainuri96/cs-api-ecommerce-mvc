@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16.3
+    container_name: cs-api-ecommerce-container
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Rohanwebid96dong
+      POSTGRES_DB: cs-api-ecommerce-db      
+    ports:
+      # 5443 is for host / local machine
+      # 5442 is for container
+      - 8433:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
