@@ -70,7 +70,8 @@ public class AuthService(EcommerceDbContext context, ILogger<AuthService> logger
         var claims = new List<Claim>{
             new("name", user.Name),
             new("email", user.Email),
-            new("is_admin", user.IsAdmin.ToString())
+            new("is_admin", user.IsAdmin.ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));

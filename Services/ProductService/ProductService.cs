@@ -116,7 +116,7 @@ public class ProductService(EcommerceDbContext context, ILogger<ProductService> 
     {
         try
         {
-            var product = new Product { Name = request.Name, Description = request.Description, Price = request.Price, Quantity = request.Quantity, CreatedAt = DateTime.UtcNow };
+            var product = new Product { Name = request.Name, Description = request.Description, Price = request.Price, Quantity = request.Quantity };
             await context.Products.AddAsync(product);
 
             await context.SaveChangesAsync();

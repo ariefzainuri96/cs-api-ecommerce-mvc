@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Ecommerce.Model.Dto;
 
-public record AddProductDto(string Name, string Description, int Price, int Quantity);
+public record AddProductDto(string Name, string Description, double Price, int Quantity);
 
 public class AddProductDtoValidator : AbstractValidator<AddProductDto>
 {

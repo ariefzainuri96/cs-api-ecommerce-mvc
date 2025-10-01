@@ -2,6 +2,7 @@ using System.Text;
 using Ecommerce.Data;
 using Ecommerce.Model.Dto;
 using Ecommerce.Services.AuthService;
+using Ecommerce.Services.CartService;
 using Ecommerce.Services.ProductService;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -38,6 +39,7 @@ builder.Services.AddDbContextPool<EcommerceDbContext>(opt =>
 // Add Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICartService, CartService>();
 
 // Add FluentValidation
 builder.Services.AddScoped<IValidator<AddProductDto>, AddProductDtoValidator>();

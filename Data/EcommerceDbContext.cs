@@ -24,6 +24,18 @@ public class EcommerceDbContext(DbContextOptions<EcommerceDbContext> options) : 
         //         ReleaseDate = 212
         //     }
         // );
+
+        modelBuilder.Entity<Product>()
+        .Property(p => p.CreatedAt)
+        // Use a database function for the default value
+        .HasDefaultValueSql("NOW()"); // For PostgreSQL
+        // .HasDefaultValueSql("GETDATE()"); // For SQL Server
+
+        modelBuilder.Entity<ShoppingCart>()
+        .Property(s => s.CreatedAt)
+        // Use a database function for the default value
+        .HasDefaultValueSql("NOW()"); // For PostgreSQL
+        // .HasDefaultValueSql("GETDATE()"); // For SQL Server
     }
 }
 

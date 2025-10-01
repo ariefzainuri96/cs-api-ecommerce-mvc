@@ -7,12 +7,19 @@ public class ShoppingCart
 {
     [Column("id")]
     public int Id { get; set; }
+
     [Column("product_id")]
     public int ProductId { get; set; }
+
+    public Product? Product { get; set; }
+
     [Column("user_id")]
     public int UserId { get; set; }
+    public User? User { get; set; }
+
     [Column("quantity")]
     public int Quantity { get; set; }
+
     [Column("created_at")]
-    public string CreatedAt { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
 }
