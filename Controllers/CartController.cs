@@ -42,7 +42,7 @@ namespace Ecommerce.Controllers
 
         [Authorize]
         [HttpGet]
-        public async Task<ActionResult<BaseResponse<List<ShoppingCart>>>> GetCart()
+        public async Task<ActionResult<BaseResponse<List<ShoppingCart>>>> GetCart([FromQuery] PaginationRequestDto requestDto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             string? userIdString = userIdClaim?.Value;
@@ -53,19 +53,33 @@ namespace Ecommerce.Controllers
                 return new HttpError("Please relogin to get the correct Authorization") { StatusCode = StatusCodes.Status401Unauthorized };
             }
 
-            var (result, carts) = await cartService.GetCartAsync(userId.Value);
+            var (result, response) = await cartService.GetCartAsync(userId.Value, requestDto);
 
             if (result != null)
             {
                 return result;
             }
 
-            return Ok(new BaseResponse<List<ShoppingCart>>
+            return Ok(new BaseResponse<PaginationBaseResponse<ShoppingCartResponse>>
             {
                 Status = 200,
                 Message = "Sukses",
-                Data = carts
+                Data = response
             });
+        }
+
+        [Authorize]
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<BaseResponse<string>>> DeleteProductFromCart(int id)
+        {
+            var error = await cartService.DeleteProductFromCartAsync(id);
+
+            if (error != null)
+            {
+                return error;
+            }
+
+            return Ok(new BaseResponse<string> { Status = 200, Message = "Succesfully delete product from cart!" });
         }
     }
 }
