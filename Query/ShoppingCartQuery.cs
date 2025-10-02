@@ -17,14 +17,20 @@ public static class ShoppingCartQuery
         {
             query = query.Where(c =>
             c.Product != null && c.Product.Name.Contains(request.SearchAll) ||
-            c.User != null && c.User.Name.Contains(request.SearchAll)
+            c.User != null && c.User.Name.Contains(request.SearchAll) ||
+            c.Quantity.ToString() == request.SearchAll
             );
         }
+        else
+        {
+            query = query.ApplyDynamicFilter(request);
+        }
+
+        // sort
+        query = query.ApplyOrdering(request);
 
         // filter by userid
         query = query.Where(c => c.UserId == userId);
-
-        query = query.OrderBy(c => c.Id);
 
         return query;
     }

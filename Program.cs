@@ -1,5 +1,6 @@
 using System.Text;
 using Ecommerce.Data;
+using Ecommerce.GlobalException;
 using Ecommerce.Model.Dto;
 using Ecommerce.Services.AuthService;
 using Ecommerce.Services.CartService;
@@ -12,6 +13,8 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers().AddNewtonsoftJson();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -52,6 +55,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
     app.MapOpenApi();
 }
+
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 

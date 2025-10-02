@@ -1,4 +1,3 @@
-using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using Ecommerce.Model.Dto;
@@ -8,61 +7,159 @@ namespace Ecommerce.Query;
 public static class DynamicQueryExtensions
 {
     /// <summary>
-    /// Dynamically applies a 'Contains' filter on a string property of an entity.
+    /// Dynamically applies a 'Contains' filter on a string property, supporting dot-notation for joined entities (e.g., "Product.Name").
     /// </summary>
     public static IQueryable<T> ApplyDynamicFilter<T>(
         this IQueryable<T> query,
-        PaginationRequestDto request) where T : class
+        PaginationRequestDto requestDto) where T : class
     {
         // ----------------------------------------------------
-        // FAIL-FAST VALIDATION (Ensuring input fields are safe)
+        // FAIL-FAST VALIDATION
         // ----------------------------------------------------
-        if (string.IsNullOrWhiteSpace(request.SearchField) || string.IsNullOrWhiteSpace(request.SearchValue))
+        if (string.IsNullOrWhiteSpace(requestDto.SearchField) || string.IsNullOrWhiteSpace(requestDto.SearchValue))
         {
-            // If inputs are empty, return the original query (no filter applied)
             return query;
         }
 
-        // ----------------------------------------------------
-        // 1. Validate and Retrieve Property Info
-        // ----------------------------------------------------
-        Type entityType = typeof(T);
-        PropertyInfo? property = entityType.GetProperty(
-            request.SearchField,
-            BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+        string[] propertyNames;
 
-        // FAIL-FAST: Property not found OR is not a string (only supports 'Contains' on strings)
-        if (property == null || property.PropertyType != typeof(string))
+        if (requestDto.SearchField.Contains('.'))
         {
-            throw new ArgumentException($"Entity '{entityType.Name}' does not have a searchable string property named '{request.SearchField}'.");
+            propertyNames = requestDto.SearchField.Split('.');
+        }
+        else
+        {
+            propertyNames = [requestDto.SearchField];
+        }
+
+        Type currentType = typeof(T);
+        ParameterExpression parameter = Expression.Parameter(currentType, "p");
+        Expression memberAccess = parameter;
+
+        // ----------------------------------------------------
+        // 1. Traverse the Property Path (Handles Joins)
+        // ----------------------------------------------------
+        foreach (var propertyName in propertyNames)
+        {
+            PropertyInfo? property = currentType.GetProperty(
+                propertyName,
+                BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+
+            // FAIL-FAST: Property not found
+            if (property == null)
+            {
+                throw new ArgumentException($"Invalid property path: Property '{propertyName}' not found on type '{currentType.Name}'.");
+            }
+
+            // Move to the next member in the path
+            memberAccess = Expression.Property(memberAccess, property);
+            currentType = property.PropertyType;
         }
 
         // ----------------------------------------------------
-        // 2. Build the Expression Tree
+        // 2. Final Type Check (Must be string for Contains method)
         // ----------------------------------------------------
-        // Parameter: (p) =>
-        ParameterExpression parameter = Expression.Parameter(entityType, "p");
+        if (currentType != typeof(string))
+        {
+            // FAIL-FAST: Cannot use 'Contains' on a non-string type (e.g., if path ended on Product).
+            throw new ArgumentException($"The final property in the path ('{requestDto.SearchField}') must be a string for 'Contains' filtering.");
+        }
 
-        // Property: p.Name (or p.Description, etc.)
-        MemberExpression memberAccess = Expression.Property(parameter, property);
+        // ----------------------------------------------------
+        // 3. Build the Contains Expression
+        // ----------------------------------------------------
+        ConstantExpression constant = Expression.Constant(requestDto.SearchValue.ToLower());
 
-        // Constant: "bakso" (the search term)
-        ConstantExpression constant = Expression.Constant(request.SearchValue.ToLower());
-
-        // Method: p.Name.ToLower()
+        // Call .ToLower() on the final property (e.g., Product.Name.ToLower())
         MethodInfo toLowerMethod = typeof(string).GetMethod("ToLower", Type.EmptyTypes)!;
         MethodCallExpression toLowerCall = Expression.Call(memberAccess, toLowerMethod);
 
-        // Method: p.Name.ToLower().Contains(searchValue.ToLower())
+        // Call .Contains(searchValue)
         MethodInfo containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) })!;
         MethodCallExpression body = Expression.Call(toLowerCall, containsMethod, constant);
 
-        // Lambda: (p) => p.Name.ToLower().Contains("bakso")
+        // Build the final Lambda: (p) => p.Product.Name.ToLower().Contains(searchValue.ToLower())
         Expression<Func<T, bool>> lambda = Expression.Lambda<Func<T, bool>>(body, parameter);
 
         // ----------------------------------------------------
-        // 3. Apply the Filter to IQueryable
+        // 4. Apply the Filter
         // ----------------------------------------------------
         return query.Where(lambda);
     }
+
+    /// <summary>
+    /// Dynamically applies an OrderBy or OrderByDescending clause based on a property path (supports joins).
+    /// </summary>
+    public static IQueryable<T> ApplyOrdering<T>(
+        this IQueryable<T> query,
+        PaginationRequestDto requestDto) where T : class
+    {
+        // ----------------------------------------------------
+        // FAIL-FAST VALIDATION
+        // ----------------------------------------------------
+        if (string.IsNullOrWhiteSpace(requestDto.OrderBy))
+        {
+            // If no property is specified, return the original query
+            return query;
+        }
+
+        // Determine the generic method name to call (OrderBy or OrderByDescending)
+        string methodName = requestDto.OrderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase)
+            ? "OrderByDescending" : "OrderBy";
+
+        // ----------------------------------------------------
+        // 1. Build the Property Access Expression (Handles Joins)
+        // ----------------------------------------------------
+        string[] properties;
+
+        if (requestDto.OrderBy.Contains('.'))
+        {
+            properties = requestDto.OrderBy.Split('.');
+        }
+        else
+        {
+            properties = [requestDto.OrderBy];
+        }
+
+        Type currentType = typeof(T);
+        ParameterExpression parameter = Expression.Parameter(currentType, "p");
+        Expression memberAccess = parameter;
+
+        // Traverse the path (e.g., from ShoppingCart to Product.Name)
+        foreach (var propertyName in properties)
+        {
+            PropertyInfo? property = currentType.GetProperty(
+                propertyName,
+                BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+
+            // FAIL-FAST: Property not found
+            if (property == null)
+            {
+                throw new ArgumentException($"Invalid OrderBy property: '{requestDto.OrderBy}' - '{propertyName}' not found on type '{currentType.Name}'.");
+            }
+
+            memberAccess = Expression.Property(memberAccess, property);
+            currentType = property.PropertyType;
+        }
+
+        // ----------------------------------------------------
+        // 2. Build the Method Call (OrderBy / OrderByDescending)
+        // ----------------------------------------------------
+        // Create the Lambda expression: p => p.Property
+        LambdaExpression orderByLambda = Expression.Lambda(memberAccess, parameter);
+
+        // The IQueryable.OrderBy method is static, so we get it from Queryable class
+        MethodInfo orderByMethod = typeof(Queryable).GetMethods()
+            .Single(method => method.Name == methodName
+                && method.IsGenericMethodDefinition
+                && method.GetParameters().Length == 2)
+            .MakeGenericMethod(typeof(T), memberAccess.Type); // T and the property's type (e.g., string, int)
+
+        // ----------------------------------------------------
+        // 3. Apply the Ordering
+        // ----------------------------------------------------
+        // Call Queryable.OrderBy<T, TProperty>(query, orderByLambda)
+        return (IQueryable<T>)orderByMethod.Invoke(null, new object[] { query, orderByLambda })!;
+    }
 }
+

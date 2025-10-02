@@ -7,4 +7,6 @@ public class PaginationRequestDto
     public string SearchAll { get; set; } = string.Empty;
     public string SearchField { get; set; } = string.Empty;
     public string SearchValue { get; set; } = string.Empty;
+    public string OrderBy { get; set; } = "Id"; // Default to Id as a fail-safe
+    public string OrderDirection { get; set; } = "asc"; // "asc" or "desc"
 }
