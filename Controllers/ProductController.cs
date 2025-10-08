@@ -14,16 +14,16 @@ public class ProductController(IProductService productService, IValidator<AddPro
 {
     [Authorize]
     [HttpGet]
-    public async Task<ActionResult<BaseResponse<List<Product>>>> GetProducts()
+    public async Task<ActionResult<BaseResponse<List<Product>>>> GetProducts([FromQuery] PaginationRequestDto requestDto)
     {
-        var (result, products) = await productService.GetProductsAsync();
+        var (result, products) = await productService.GetProductsAsync(requestDto);
 
         if (result != null)
         {
             return result;
         }
 
-        return Ok(new BaseResponse<List<Product>>
+        return Ok(new BaseResponse<PaginationBaseResponse<Product>>
         {
             Status = 200,
             Message = "Sukses",

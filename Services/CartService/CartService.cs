@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Ecommerce.Services.CartService;
 
-public class CartService(EcommerceDbContext context, ILogger<CartService> logger) : ICartService
+public class CartService(EcommerceDbContext context) : ICartService
 {
     public async Task<HttpError?> AddProductToCartAsync(int userId, AddProductCartDto dto)
     {

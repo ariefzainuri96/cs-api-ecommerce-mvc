@@ -15,54 +15,38 @@ public class AuthService(EcommerceDbContext context, ILogger<AuthService> logger
 {
     public async Task<(HttpError?, User, string)> LoginAsync(LoginDto request)
     {
-        try
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        if (user == null)
         {
-            var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-
-            if (user == null)
-            {
-                return (new HttpError("Invalid Email or Password!") { StatusCode = StatusCodes.Status404NotFound }, new(), "");
-            }
-
-            var hashedPassword = new PasswordHasher<User>().VerifyHashedPassword(user, user.Password, request.Password);
-
-            if (hashedPassword == PasswordVerificationResult.Failed)
-            {
-                return (new HttpError("Invalid Email or Password!") { StatusCode = StatusCodes.Status404NotFound }, new(), "");
-            }
-
-            var token = CreateToken(user);
-
-            return (null, user, token);
+            return (new HttpError("Invalid Email or Password!") { StatusCode = StatusCodes.Status404NotFound }, new(), "");
         }
-        catch (Exception ex)
+
+        var hashedPassword = new PasswordHasher<User>().VerifyHashedPassword(user, user.Password, request.Password);
+
+        if (hashedPassword == PasswordVerificationResult.Failed)
         {
-            logger.LogError(ex, "Error in LoginAsync");
-            return (new HttpError("Internal server Error!") { StatusCode = 500 }, new(), "");
+            return (new HttpError("Invalid Email or Password!") { StatusCode = StatusCodes.Status404NotFound }, new(), "");
         }
+
+        var token = CreateToken(user);
+
+        return (null, user, token);
     }
 
     public async Task<HttpError?> RegisterAsync(RegisterDto request)
     {
-        try
+        if (await context.Users.AnyAsync(u => u.Email == request.Email))
         {
-            if (await context.Users.AnyAsync(u => u.Email == request.Email))
-            {
-                return new HttpError("User Already Exist!") { StatusCode = StatusCodes.Status409Conflict };
-            }
-
-            var hashedPassword = new PasswordHasher<RegisterDto>().HashPassword(request, request.Password);
-
-            await context.Users.AddAsync(new User { Name = request.Name, Email = request.Email, Password = hashedPassword, IsAdmin = false });
-            await context.SaveChangesAsync();
-
-            return null;
+            return new HttpError("User Already Exist!") { StatusCode = StatusCodes.Status409Conflict };
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error in RegisterAsync");
-            return new HttpError("Internal server error") { StatusCode = 500 };
-        }
+
+        var hashedPassword = new PasswordHasher<RegisterDto>().HashPassword(request, request.Password);
+
+        await context.Users.AddAsync(new User { Name = request.Name, Email = request.Email, Password = hashedPassword, IsAdmin = false });
+        await context.SaveChangesAsync();
+
+        return null;
     }
 
     private string CreateToken(User user)
