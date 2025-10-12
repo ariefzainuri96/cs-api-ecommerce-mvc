@@ -1,5 +1,3 @@
-using System;
-
 namespace Ecommerce.GlobalException;
 
 /// <summary>

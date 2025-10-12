@@ -2,6 +2,7 @@ using System.Text;
 using Ecommerce.Data;
 using Ecommerce.GlobalException;
 using Ecommerce.Model.Dto;
+using Ecommerce.Model.Mapper;
 using Ecommerce.Services.AuthService;
 using Ecommerce.Services.CartService;
 using Ecommerce.Services.ProductService;
@@ -12,6 +13,9 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// mapper
+builder.Services.AddAutoMapper(typeof(ProductMapper));
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

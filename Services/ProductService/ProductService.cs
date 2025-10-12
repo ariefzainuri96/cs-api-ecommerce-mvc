@@ -1,5 +1,6 @@
-using System.Reflection;
+using AutoMapper;
 using Ecommerce.Data;
+using Ecommerce.GlobalException;
 using Ecommerce.Model.Dto;
 using Ecommerce.Model.Entities;
 using Ecommerce.Model.Response;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Ecommerce.Services.ProductService;
 
-public class ProductService(EcommerceDbContext context) : IProductService
+public class ProductService(EcommerceDbContext context, IMapper mapper) : IProductService
 {
     public async Task<HttpError?> DeleteProductAsync(int id)
     {
@@ -63,34 +64,18 @@ public class ProductService(EcommerceDbContext context) : IProductService
 
     public async Task<(HttpError?, Product)> PatchProductAsync(int id, Dictionary<string, object> updates)
     {
-        // Find the video game by ID
-        var product = await context.Products.FirstOrDefaultAsync(vg => vg.Id == id);
+        var product = await context.Products.FirstOrDefaultAsync(vg => vg.Id == id) ?? throw new EntityNotFoundException($"VideoGame with ID {id} not found.");
 
-        if (product == null)
+        var invalidPropertyList = EntityUtil.CheckEntityField<Product>(updates);
+        if (invalidPropertyList.Count > 0)
         {
-            return (new HttpError($"VideoGame with ID {id} not found.") { StatusCode = StatusCodes.Status404NotFound }, new());
+            throw new InvalidPropertyException($"Invalid property: {string.Join(", ", invalidPropertyList)}");
         }
 
         // Update fields dynamically
-        foreach (var update in updates)
-        {
-            var propertyName = update.Key;
-            var propertyValue = update.Value;
+        EntityUtil.PatchEntity(product, updates);
 
-            // Use reflection to check if the property exists and is writable
-            var propertyInfo = typeof(Product).GetProperty(propertyName,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-            if (propertyInfo != null && propertyInfo.CanWrite)
-            {
-                // Convert the value to the correct type and set it
-                propertyInfo.SetValue(product, Convert.ChangeType(propertyValue, propertyInfo.PropertyType));
-            }
-            else
-            {
-                return (new HttpError($"Invalid property: {propertyName}") { StatusCode = StatusCodes.Status400BadRequest }, new());
-            }
-        }
+        context.Entry(product).State = EntityState.Modified;
 
         context.SaveChanges();
 
@@ -105,5 +90,20 @@ public class ProductService(EcommerceDbContext context) : IProductService
         await context.SaveChangesAsync();
 
         return (null, product);
+    }
+
+    public async Task<(HttpError?, Product)> PutProductAsync(int id, ProductDto product)
+    {
+        var existingProduct = await context.Products
+            .FirstOrDefaultAsync(p => p.Id == id)
+            ?? throw new EntityNotFoundException($"Product with ID {id} not found.");
+
+        mapper.Map(product, existingProduct);
+
+        context.Entry(existingProduct).State = EntityState.Modified;
+
+        await context.SaveChangesAsync();
+
+        return (null, existingProduct);
     }
 }

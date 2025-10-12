@@ -12,4 +12,5 @@ public interface IProductService
     Task<(HttpError?, Product)> PostProductAsync(AddProductDto request);
     Task<(HttpError?, Product)> PatchProductAsync(int id, Dictionary<string, object> updates);
     Task<HttpError?> DeleteProductAsync(int id);
+    Task<(HttpError?, Product)> PutProductAsync(int id, ProductDto product);
 }

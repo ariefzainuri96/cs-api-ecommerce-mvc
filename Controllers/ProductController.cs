@@ -116,4 +116,28 @@ public class ProductController(IProductService productService, IValidator<AddPro
 
         return Ok(new BaseResponse<string>() { Status = 200, Message = "Succesfully delete product!" });
     }
+
+    [Authorize]
+    [HttpPut("{id}")]
+    public async Task<ActionResult> PutProduct(int id, [FromBody] ProductDto productDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var (error, product) = await productService.PutProductAsync(id, productDto);
+
+        if (error != null)
+        {
+            return error;
+        }
+
+        return Ok(new BaseResponse<Product>()
+        {
+            Status = 200,
+            Message = "Succesfully update the Product!",
+            Data = product
+        });
+    }
 }

@@ -28,6 +28,12 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             statusCode = HttpStatusCode.BadRequest;
             detail = exception.Message;
         }
+        // Handle not found errors
+        else if (exception is EntityNotFoundException)
+        {
+            statusCode = HttpStatusCode.NotFound;
+            detail = exception.Message;
+        }
         // Handle unauthorized or forbidden errors
         else if (exception is UnauthorizedAccessException)
         {
