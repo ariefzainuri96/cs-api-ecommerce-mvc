@@ -11,7 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Ecommerce.Services.AuthService;
 
-public class AuthService(EcommerceDbContext context, ILogger<AuthService> logger, IConfiguration configuration) : IAuthService
+public class AuthService(EcommerceDbContext context, IConfiguration configuration) : IAuthService
 {
     public async Task<(HttpError?, User, string)> LoginAsync(LoginDto request)
     {
